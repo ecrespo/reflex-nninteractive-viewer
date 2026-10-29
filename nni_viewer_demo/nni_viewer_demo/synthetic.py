@@ -172,11 +172,10 @@ def write_volumes(out_dir: Path) -> dict:
     """Write what ``layers.write_volumes`` writes; return its meta dict."""
     out_dir.mkdir(parents=True, exist_ok=True)
     data = phantom()
-    if not (out_dir / "image.nii.gz").exists():
-        write_nifti(out_dir / "image.nii.gz", data)
-        write_nifti(out_dir / "image3d.nii.gz", data)
-        write_nifti(out_dir / "zeros_uint8.nii.gz", np.zeros(SHAPE, np.uint8))
-        write_nifti(out_dir / "zeros_uint16.nii.gz", np.zeros(SHAPE, np.uint16))
+    write_nifti(out_dir / "image.nii.gz", data)
+    write_nifti(out_dir / "image3d.nii.gz", data)
+    write_nifti(out_dir / "zeros_uint8.nii.gz", np.zeros(SHAPE, np.uint8))
+    write_nifti(out_dir / "zeros_uint16.nii.gz", np.zeros(SHAPE, np.uint16))
     return {
         "shape": list(SHAPE),
         "spacing": list(SPACING),

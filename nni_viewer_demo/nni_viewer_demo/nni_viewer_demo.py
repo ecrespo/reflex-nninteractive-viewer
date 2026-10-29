@@ -7,7 +7,6 @@ see the coordinates arrive in Python state.
 
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -25,7 +24,8 @@ from reflex_nninteractive_viewer.server import (
 from . import synthetic
 
 KEY = "phantom"
-ROOT = Path(tempfile.gettempdir()) / "nni_viewer_demo"
+# Inside the demo (gitignored), regenerated on every start: nothing pre-existing is trusted.
+ROOT = Path(__file__).resolve().parent.parent / ".data"
 STORE = ViewerStore(ROOT)
 META = volume_meta(synthetic.write_volumes(STORE.volume_dir(KEY)), KEY)
 INITIAL_IDS = [1, 2]
