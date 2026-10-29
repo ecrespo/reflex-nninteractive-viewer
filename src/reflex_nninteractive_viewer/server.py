@@ -19,22 +19,27 @@ Routes (``prefix`` defaults to ``/api``):
 Everything that needs ``nninteractive_agent`` imports it inside the function, so this
 module (and the component) installs without it. The store keeps meshes, bundles and
 WebSocket subscribers in memory: run the Reflex backend as a single process.
+
+The routes are public unless you pass ``authorize`` (see :func:`create_router`). Medical
+images are sensitive: check the user's session there in anything but a local demo.
 """
 
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 import re
 import struct
 import threading
 import zlib
-from collections.abc import Iterable
+from collections.abc import Awaitable, Callable, Iterable
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, Response
+from starlette.requests import HTTPConnection
 
 VOLUME_FILES = ("image.nii.gz", "image3d.nii.gz", "zeros_uint8.nii.gz", "zeros_uint16.nii.gz")
 """The files of one image that the viewer downloads (written by ``layers.write_volumes``)."""
@@ -148,7 +153,8 @@ class ViewerStore:
 
     # -- volumes
     def volume_dir(self, key: str) -> Path:
-        """Directory of image ``key``."""
+        """Directory of image ``key`` (raises ValueError for keys that are not plain names)."""
+        _check_key(key)
         return self._dirs.get(key) or self.root / key
 
     def add_volume_dir(self, key: str, path: str | Path) -> None:
@@ -190,14 +196,19 @@ class ViewerStore:
         return self._bundles.get(key)
 
     def publish(self, key: str, patch: bytes) -> None:
-        """Send one patch to every WebSocket subscribed to image ``key`` (thread-safe)."""
+        """Send one patch to every WebSocket subscribed to image ``key`` (thread-safe).
+
+        A subscriber that falls more than ``MAX_QUEUED_PATCHES`` behind is disconnected
+        (its page reconnects and resynchronizes through ``patch_url``) instead of
+        buffering without bound.
+        """
         with self._lock:
             subs = list(self._subscribers.get(key, ()))
         for loop, queue in subs:
-            loop.call_soon_threadsafe(queue.put_nowait, patch)
+            loop.call_soon_threadsafe(_offer, queue, patch)
 
     def _subscribe(self, key: str) -> tuple[asyncio.AbstractEventLoop, asyncio.Queue]:
-        sub = (asyncio.get_running_loop(), asyncio.Queue())
+        sub = (asyncio.get_running_loop(), asyncio.Queue(maxsize=MAX_QUEUED_PATCHES + 1))
         with self._lock:
             self._subscribers.setdefault(key, set()).add(sub)
         return sub
@@ -207,14 +218,57 @@ class ViewerStore:
             self._subscribers.get(key, set()).discard(sub)
 
 
+MAX_QUEUED_PATCHES = 256
+"""Patches a WebSocket subscriber may lag behind before it is disconnected."""
+_OVERFLOW = object()
+
+
+def _offer(queue: asyncio.Queue, patch: bytes) -> None:
+    if queue.qsize() >= MAX_QUEUED_PATCHES:
+        if not queue.full():
+            queue.put_nowait(_OVERFLOW)
+        return
+    queue.put_nowait(patch)
+
+
 # -------------------------------------------------------------------------- routes
-def create_router(store: ViewerStore, prefix: str = "/api") -> APIRouter:
-    """Build the viewer's routes on an ``APIRouter`` (to include in an existing FastAPI app)."""
+Authorize = Callable[[HTTPConnection, str], bool | Awaitable[bool]]
+"""``authorize(request_or_websocket, key) -> bool``: may this connection read ``key``?"""
+
+
+def create_router(
+    store: ViewerStore, prefix: str = "/api", authorize: Authorize | None = None
+) -> APIRouter:
+    """Build the viewer's routes on an ``APIRouter`` (to include in an existing FastAPI app).
+
+    Args:
+        store: What to serve.
+        prefix: URL prefix of the routes.
+        authorize: Called with the request (or WebSocket) and the image, mesh or PNG key
+            before anything is served; return False to answer 404. Without it every
+            route is public: use unguessable keys (``secrets.token_urlsafe``) at least,
+            and an ``authorize`` that checks the user's session for anything but a demo.
+
+    Returns:
+        The router.
+
+    """
     router = APIRouter(prefix=prefix)
 
+    async def allowed(conn: HTTPConnection, key: str) -> bool:
+        if authorize is None:
+            return True
+        ok = authorize(conn, key)
+        return bool(await ok) if inspect.isawaitable(ok) else bool(ok)
+
+    async def guard(conn: HTTPConnection, key: str) -> None:
+        if not await allowed(conn, key):
+            raise HTTPException(404)
+
     @router.get("/volume/{key}/{name}")
-    async def volume(key: str, name: str):
+    async def volume(request: Request, key: str, name: str):
         _route_key(key)
+        await guard(request, key)
         if name not in VOLUME_FILES:
             raise HTTPException(404)
         f = store.volume_dir(key) / name
@@ -227,8 +281,9 @@ def create_router(store: ViewerStore, prefix: str = "/api") -> APIRouter:
         )
 
     @router.get("/mesh/{key}")
-    async def mesh(key: str):
+    async def mesh(request: Request, key: str):
         _route_key(key)
+        await guard(request, key)
         blob = store.mesh(key)
         if blob is None:  # replaced or removed since the page was told about it
             return Response(status_code=204)
@@ -237,9 +292,10 @@ def create_router(store: ViewerStore, prefix: str = "/api") -> APIRouter:
         )
 
     @router.get("/img/{name}")
-    async def image(name: str):
+    async def image(request: Request, name: str):
         if not _PNG.fullmatch(name):
             raise HTTPException(404)
+        await guard(request, name)
         f = store.images_dir / name
         if not f.is_file():
             raise HTTPException(404)
@@ -248,8 +304,9 @@ def create_router(store: ViewerStore, prefix: str = "/api") -> APIRouter:
         )
 
     @router.get("/patch/{key}")
-    async def patch(key: str):
+    async def patch(request: Request, key: str):
         _route_key(key)
+        await guard(request, key)
         blob = store.patch_bundle(key)
         if blob is None:
             return Response(status_code=204)
@@ -259,14 +316,18 @@ def create_router(store: ViewerStore, prefix: str = "/api") -> APIRouter:
 
     @router.websocket("/patch_ws/{key}")
     async def patch_ws(ws: WebSocket, key: str):
-        if not _valid_key(key):
+        if not _valid_key(key) or not await allowed(ws, key):
             await ws.close(code=4404)
             return
         await ws.accept()
         sub = store._subscribe(key)
         try:
             while True:
-                await ws.send_bytes(await sub[1].get())
+                item = await sub[1].get()
+                if item is _OVERFLOW:  # too slow: the client reconnects and resyncs
+                    await ws.close(code=4408)
+                    break
+                await ws.send_bytes(item)
         except (WebSocketDisconnect, RuntimeError):
             pass
         finally:
@@ -275,10 +336,15 @@ def create_router(store: ViewerStore, prefix: str = "/api") -> APIRouter:
     return router
 
 
-def create_api(store: ViewerStore, prefix: str = "/api") -> FastAPI:
-    """Build a FastAPI app with the viewer's routes, for ``rx.App(api_transformer=...)``."""
+def create_api(
+    store: ViewerStore, prefix: str = "/api", authorize: Authorize | None = None
+) -> FastAPI:
+    """Build a FastAPI app with the viewer's routes, for ``rx.App(api_transformer=...)``.
+
+    See :func:`create_router` for ``authorize``.
+    """
     api = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
-    api.include_router(create_router(store, prefix))
+    api.include_router(create_router(store, prefix, authorize))
     return api
 
 
@@ -302,7 +368,7 @@ def write_image(store: ViewerStore, img: Any, key: str) -> dict[str, Any]:
     """Write a ``LoadedImage`` with ``layers.write_volumes``; return the ``volume_meta`` prop."""
     from nninteractive_agent.web.layers import write_volumes  # pyright: ignore[reportMissingImports]
 
-    out = store.volume_dir(key)
+    out = store.volume_dir(key)  # validates the key before anything is written
     return volume_meta(write_volumes(img, out), key)
 
 
