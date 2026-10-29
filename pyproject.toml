@@ -4,7 +4,7 @@ dynamic = ["version"]
 description = "Reflex component wrapping the nnInteractive agent's WebGL2 medical image viewer (NiiVue slice views + 3D view)."
 readme = "README.md"
 license = "Apache-2.0"
-license-files = ["LICENSE", "NOTICE", "src/reflex_nninteractive_viewer/assets/LICENSE*"]
+license-files = ["LICENSE", "NOTICE", "src/reflex_nninteractive_viewer/assets/LICENSE*", "src/reflex_nninteractive_viewer/assets/vendor/LICENSE*"]
 requires-python = ">=3.11"
 authors = [{ name = "Ernesto Crespo", email = "ecrespo@gmail.com" }]
 keywords = ["reflex", "reflex-component", "nninteractive", "niivue", "medical-imaging", "webgl2"]
