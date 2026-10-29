@@ -1,0 +1,47 @@
+reflex-nninteractive-viewer
+Copyright 2026 Ernesto Crespo
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product includes software developed by the Division of Medical Image
+Computing (MIC), German Cancer Research Center (DKFZ), Heidelberg:
+
+  nnInteractive Agent
+  https://github.com/MIC-DKFZ/nninteractive-agent
+  Licensed under the Apache License, Version 2.0
+  (src/reflex_nninteractive_viewer/assets/LICENSE-nninteractive-agent)
+
+  Files taken from src/nninteractive_agent/web/static/ at upstream commit
+  57b06cb4bac0aedaf4946b8f4a65247d998eff6e:
+    src/reflex_nninteractive_viewer/assets/viewer.js
+    src/reflex_nninteractive_viewer/assets/render3d.js
+    src/reflex_nninteractive_viewer/assets/coords.js
+  Any changes to these files are listed in
+  src/reflex_nninteractive_viewer/assets/PATCHES.md.
+
+  The binary formats documented in README.md are those written by
+  nninteractive_agent.web.layers (write_volumes, encode_patch, crop_mesh).
+
+This product includes NiiVue 0.69.0 (@niivue/niivue), vendored unmodified as
+src/reflex_nninteractive_viewer/assets/vendor/niivue-0.69.0.esm.js
+(the copy shipped by nnInteractive Agent):
+
+  https://github.com/niivue/niivue
+  Copyright (c) 2021, Niivue
+  Licensed under the BSD 2-Clause License
+  (src/reflex_nninteractive_viewer/assets/vendor/LICENSE-niivue)
+
+This product does NOT include the nnInteractive model weights. The official
+weights are licensed under CC BY-NC-SA 4.0 (non-commercial) and are obtained
+separately by nnInteractive / nnInteractive Agent.
+
+If you use this work, please cite:
+
+  Isensee, F., Ulrich Harsy, C., Rokuss, M., Hamm, B., Vollmuth, P., &
+  Maier-Hein, K. H. (2026). nnInteractive Agent: General-Purpose AI Agents as
+  3D Image Annotators. https://arxiv.org/abs/2610.31080
+
+  Isensee, F., Rokuss, M., Kraemer, L., Dinkelacker, S., Ravindran, A.,
+  Stritzke, F., Hamm, B., Wald, T., Langenberg, M., Ulrich, C., Deissler, J.,
+  Floca, R., & Maier-Hein, K. (2025). nnInteractive: Redefining 3D Promptable
+  Segmentation. https://arxiv.org/abs/2503.08373
