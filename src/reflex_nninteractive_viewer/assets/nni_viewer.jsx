@@ -135,8 +135,7 @@ export function NniViewer({
   id,
 }) {
   const rootRef = useRef(null);
-  const canvas2dRef = useRef(null);
-  const canvas3dRef = useRef(null);
+  const pane2dRef = useRef(null);
   const pane3dRef = useRef(null);
   const labelsRef = useRef(null);
   const viewerRef = useRef(null);
@@ -163,10 +162,20 @@ export function NniViewer({
   // ------------------------------------------------------------- mount / unmount
   useEffect(() => {
     acquireSharedDom();
+    let alive = true;
+    // Fresh canvases for every mount: destroy() loses their WebGL contexts for good, and a
+    // canvas hands out the same (lost) context forever. React StrictMode mounts, unmounts and
+    // remounts in development, so reusing JSX-rendered canvases would break the second mount.
+    const canvas = (pane, name) => {
+      const c = document.createElement("canvas");
+      c.dataset.nni = name;
+      pane.appendChild(c);
+      return c;
+    };
     const els = {
       viewport: rootRef.current,
-      canvas2d: canvas2dRef.current,
-      canvas3d: canvas3dRef.current,
+      canvas2d: canvas(pane2dRef.current, "canvas2d"),
+      canvas3d: canvas(pane3dRef.current, "canvas3d"),
       pane3d: pane3dRef.current,
       tileLabels: labelsRef.current,
     };
@@ -191,6 +200,7 @@ export function NniViewer({
     rootRef.current.nniViewer = viewer; // for browser tests, like upstream's window.nniViewer
     initRef.current = viewer.init();
     initRef.current.catch((e) => {
+      if (!alive) return; // destroyed while starting (StrictMode remount)
       console.error("The nnInteractive viewer could not start:", e);
       fail(/webgl2/i.test(String(e?.message)) ? NO_WEBGL : `The image viewer could not start: ${e?.message ?? e}`);
     });
@@ -206,7 +216,7 @@ export function NniViewer({
     // "Mention location": a click without a drag in the slice views. viewer.js moves the
     // crosshair on mouse-up (directly or through NiiVue), so read it right after. The voxel
     // comes from viewer.js (converted with coords.js), mm from the image's NIfTI affine.
-    const pane2d = canvas2dRef.current.parentElement;
+    const pane2d = pane2dRef.current;
     let down = null;
     const onDown = (e) => { down = e.button === 0 ? [e.clientX, e.clientY] : null; };
     const onUp = (e) => {
@@ -224,8 +234,12 @@ export function NniViewer({
     return () => {
       pane2d.removeEventListener("mousedown", onDown, { capture: true });
       window.removeEventListener("mouseup", onUp);
+      alive = false;
       clearTimeout(sliceTimer.current);
       viewer.destroy();
+      els.canvas2d.remove();
+      els.canvas3d.remove();
+      labelsRef.current?.replaceChildren();
       viewerRef.current = null;
       releaseSharedDom();
     };
@@ -429,8 +443,8 @@ export function NniViewer({
       onMouseDown={() => rootRef.current?.focus({ preventScroll: true })}
       data-nni-ready={loadedKey ? "true" : "false"}
     >
-      <div className="nni-pane nni-pane2d"><canvas ref={canvas2dRef} data-nni="canvas2d" /></div>
-      <div className="nni-pane nni-pane3d" ref={pane3dRef}><canvas ref={canvas3dRef} data-nni="canvas3d" /></div>
+      <div className="nni-pane nni-pane2d" ref={pane2dRef} />
+      <div className="nni-pane nni-pane3d" ref={pane3dRef} />
       <div className="nni-tile-labels" ref={labelsRef} />
       {status && (
         <div className={`nni-status${status.error ? " error" : ""}`}>
