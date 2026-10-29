@@ -54,7 +54,7 @@ exclude = ["/nni_viewer_demo", "/.github", "/.idea"]
 packages = ["src/reflex_nninteractive_viewer"]
 
 [tool.hatch.build.hooks.reflex-pyi]
-dependencies = ["ruff", "reflex>=0.10.1"]
+dependencies = ["ruff", "reflex>=0.10.1", "fastapi>=0.115"]
 
 [tool.ruff]
 target-version = "py311"
