@@ -2,6 +2,8 @@
 
 import hashlib
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -46,13 +48,28 @@ def test_is_imported_dynamically_on_the_client_only():
     assert ".then((mod) => mod.NniViewer)" in code
 
 
-def test_wrapper_and_vendored_modules_are_linked_next_to_each_other():
-    # Importing the component links them into ./assets/external (the compiling app).
-    base = Path.cwd() / "assets" / "external" / "reflex_nninteractive_viewer"
+def _import_in(cwd: Path) -> str:
+    code = "from reflex_nninteractive_viewer import NNInteractiveViewer as C; print(C.library)"
+    out = subprocess.run([sys.executable, "-c", code], cwd=cwd, capture_output=True, text=True)
+    assert out.returncode == 0, out.stderr
+    return out.stdout.strip().splitlines()[-1]
+
+
+def test_inside_an_app_the_modules_are_linked_next_to_each_other(tmp_path):
+    (tmp_path / "rxconfig.py").write_text("import reflex as rx\nconfig = rx.Config(app_name='x')\n")
+    library = _import_in(tmp_path)
+    base = tmp_path / "assets" / "external" / "reflex_nninteractive_viewer"
     base = base / "nninteractive_viewer" / "assets"
     for name in ("nni_viewer.jsx", "viewer.js", "render3d.js", "coords.js"):
         assert (base / name).resolve() == (ASSETS / name).resolve()
     assert (base / "vendor" / "niivue-0.69.0.esm.js").resolve().is_file()
+    # The path computed outside an app is the one rx.asset gives inside it.
+    assert library == nni_viewer().library
+
+
+def test_outside_an_app_importing_leaves_the_directory_untouched(tmp_path):
+    _import_in(tmp_path)
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_wrapper_imports_only_what_is_shipped():

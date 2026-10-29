@@ -44,6 +44,8 @@ fallback-version = "0.1.0.dev0"
 [tool.hatch.build]
 # The .pyi stubs are generated at build time and are not committed.
 artifacts = ["/src/**/*.pyi"]
+# Importing the component (as the stub hook does) links shared assets into ./assets/external.
+exclude = ["**/assets/external"]
 
 [tool.hatch.build.targets.sdist]
 exclude = ["/nni_viewer_demo", "/.github", "/.idea"]

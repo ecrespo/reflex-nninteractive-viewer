@@ -46,7 +46,15 @@ _REQUIRED_META_KEYS = ("url", "shape", "range", "auto_window")
 
 
 def _link_assets() -> str:
-    """Link the JS modules into the compiling app; return the wrapper's import path."""
+    """Link the JS modules into the compiling app; return the wrapper's import path.
+
+    Links are only created inside a Reflex app (``rxconfig.py`` in the working directory).
+    Anywhere else (build hooks, tests, scripts) importing the component must not drop
+    symlinks into the working directory; the import path is the same either way.
+    """
+    if not (Path.cwd() / constants.Config.FILE).is_file():
+        module = __name__.replace(".", "/")
+        return f"$/public/{constants.Dirs.EXTERNAL_APP_ASSETS}/{module}/assets/nni_viewer.jsx"
     if not EnvironmentVariables.REFLEX_BACKEND_ONLY.get():
         # rx.asset creates the module's folder but not subfolders such as assets/vendor/.
         external = Path.cwd() / constants.Dirs.APP_ASSETS / constants.Dirs.EXTERNAL_APP_ASSETS
