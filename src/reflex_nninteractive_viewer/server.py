@@ -366,7 +366,9 @@ def volume_meta(meta: dict[str, Any], key: str, prefix: str = "api") -> dict[str
 
 def write_image(store: ViewerStore, img: Any, key: str) -> dict[str, Any]:
     """Write a ``LoadedImage`` with ``layers.write_volumes``; return the ``volume_meta`` prop."""
-    from nninteractive_agent.web.layers import write_volumes  # pyright: ignore[reportMissingImports]
+    from nninteractive_agent.web.layers import (  # pyright: ignore[reportMissingImports]
+        write_volumes,
+    )
 
     out = store.volume_dir(key)  # validates the key before anything is written
     return volume_meta(write_volumes(img, out), key)

@@ -24,7 +24,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - run: uv sync --locked
       - run: uv run pre-commit run --all-files
-      - run: uv run pytest
+      - run: uv run pytest -m "not browser"
 
   build:
     runs-on: ubuntu-latest

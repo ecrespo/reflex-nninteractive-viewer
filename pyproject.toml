@@ -40,6 +40,8 @@ source = "uv-dynamic-versioning"
 
 [tool.uv-dynamic-versioning]
 fallback-version = "0.1.0.dev0"
+# No "+<commit>" local part: PyPI and TestPyPI reject local versions.
+metadata = false
 
 [tool.hatch.build]
 # The .pyi stubs are generated at build time and are not committed.

@@ -21,7 +21,7 @@ The upstream viewer is framework-free JavaScript, and this package wraps it rath
 | `nni_viewer.jsx` | this package | the React wrapper |
 
 The upstream commit, the checksums and the one patch are recorded in
-[`assets/PATCHES.md`](src/reflex_nninteractive_viewer/assets/PATCHES.md).
+[`assets/PATCHES.md`](https://github.com/ecrespo/reflex-nninteractive-viewer/blob/main/src/reflex_nninteractive_viewer/assets/PATCHES.md).
 
 ## Architecture
 
@@ -83,11 +83,11 @@ import reflex as rx
 from reflex_nninteractive_viewer import nni_viewer
 from reflex_nninteractive_viewer.server import ViewerStore, create_api
 
-store = ViewerStore("/var/lib/myapp/viewer")   # one sub-directory per image key
+store = ViewerStore("/var/lib/myapp/viewer")  # one sub-directory per image key
 
 
 class S(rx.State):
-    meta: dict | None = None        # the volume_meta prop (see below)
+    meta: dict | None = None  # the volume_meta prop (see below)
     objects: list[dict] = []
     meshes: list[dict] = []
     layout: str = "grid"
@@ -95,7 +95,7 @@ class S(rx.State):
 
     @rx.event
     def located(self, voxel: list[int], mm: list[float], value: float):
-        self.voxel = voxel           # e.g. hand it to the agent as "the user means here"
+        self.voxel = voxel  # e.g. hand it to the agent as "the user means here"
 
     @rx.event
     def relayout(self, mode: str):
@@ -126,14 +126,14 @@ app.add_page(index)
 ```python
 from reflex_nninteractive_viewer import server
 
-meta = server.write_image(store, ws.image, key)          # layers.write_volumes + URLs
+meta = server.write_image(store, ws.image, key)  # layers.write_volumes + URLs
 store.set_patch_bundle(key, server.workspace_patch_bundle(ws))  # LayerSync patches
 for oid in ws.objects:
-    blob = server.workspace_mesh(ws, oid)                # layers.crop_mesh
+    blob = server.workspace_mesh(ws, oid)  # layers.crop_mesh
     if blob:
         v = store.set_mesh(f"o{oid}", blob)
         # -> meshes prop: {"key": f"o{oid}", "url": f"api/mesh/o{oid}?v={v}", "version": v, "color": ...}
-objects = server.workspace_objects(ws)                   # colors from core.render.object_color
+objects = server.workspace_objects(ws)  # colors from core.render.object_color
 ```
 
 While the agent works, push each `LayerSync().patches(ws)` message with
@@ -286,6 +286,28 @@ uv build                                       # wheel + sdist, with generated .
 
 Versions come from git tags (`v0.1.0` builds 0.1.0).
 
+### Releasing
+
+Releases are published from GitHub Actions with PyPI
+[trusted publishing](https://docs.pypi.org/trusted-publishers/) (no API token):
+
+1. Merge to `main` and wait for CI to pass.
+2. Tag a commit of `main` and push the tag:
+
+   ```bash
+   git tag v0.1.0
+   git push origin v0.1.0
+   ```
+
+   `.github/workflows/publish.yml` checks that the commit is on `main`, runs the tests,
+   builds the sdist and wheel (with stubs), checks that the version equals the tag and that
+   the README renders, publishes to PyPI (environment `pypi`) and creates a GitHub release
+   with the distributions.
+3. To try the pipeline first, run the *Publish* workflow by hand on `main`: it publishes a
+   development version to TestPyPI (environment `testpypi`).
+
+A version can be published once; bump the tag for every release.
+
 ## Credits and license
 
 - **nnInteractive Agent**, Division of Medical Image Computing, German Cancer Research Center
@@ -299,5 +321,5 @@ Versions come from git tags (`v0.1.0` builds 0.1.0).
     Segmentation.* <https://arxiv.org/abs/2503.08373>
 - **NiiVue** 0.69.0, BSD-2-Clause, <https://github.com/niivue/niivue>.
 
-This package is licensed under Apache-2.0 (see [LICENSE](LICENSE) and [NOTICE](NOTICE)).
+This package is licensed under Apache-2.0 (see [LICENSE](https://github.com/ecrespo/reflex-nninteractive-viewer/blob/main/LICENSE) and [NOTICE](https://github.com/ecrespo/reflex-nninteractive-viewer/blob/main/NOTICE)).
 The vendored files keep their own licenses, which ship with the package.
