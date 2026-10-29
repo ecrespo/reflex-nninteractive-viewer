@@ -230,3 +230,6 @@ nni_viewer_demo/.web/
 nni_viewer_demo/.states/
 nni_viewer_demo/assets/external/
 nni_viewer_demo/reflex.lock/
+
+# Shared assets linked by rx.asset when the package is imported from the repo root (tests).
+/assets/external/
