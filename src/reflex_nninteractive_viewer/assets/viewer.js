@@ -210,7 +210,8 @@ export class Viewer {
     this.nv2.onLocationChange = (loc) => this._onLocation(loc)
     this.r3 = new Render3D(this.els.canvas3d)
     this._installInteraction()
-    new ResizeObserver(() => this._resize()).observe(this.els.viewport)
+    this._resizeObserver = new ResizeObserver(() => this._resize()) // reflex-nninteractive-viewer: for destroy()
+    this._resizeObserver.observe(this.els.viewport)
   }
 
   // ------------------------------------------------------------------ image
@@ -490,8 +491,10 @@ export class Viewer {
     const pane2 = this.els.canvas2d.parentElement
     this._applyMouseConfig()
     pane2.addEventListener('mousedown', (e) => this._onDown(e), { capture: true })
-    window.addEventListener('mousemove', (e) => this._onMove(e), { capture: true })
-    window.addEventListener('mouseup', (e) => this._onUp(e), { capture: true })
+    this._winMove = (e) => this._onMove(e) // reflex-nninteractive-viewer: for destroy()
+    this._winUp = (e) => this._onUp(e)
+    window.addEventListener('mousemove', this._winMove, { capture: true })
+    window.addEventListener('mouseup', this._winUp, { capture: true })
     // Any button held in the slice views counts as interacting (also NiiVue's own crosshair and
     // pan drags), as does scrolling until 400 ms after the last wheel event.
     pane2.addEventListener('mousedown', () => { this.pointerDown2d = true }, { capture: true })
@@ -855,5 +858,19 @@ export class Viewer {
     const id = objIdx >= 0 ? Math.round(loc.values[objIdx]?.value ?? 0) : 0
     const obj = this.objects.find((o) => o.id === id)
     this.cb.onLocation?.({ point: p, value, object: obj || null, inside: p.every((v, k) => v >= 0 && v < this.meta.shape[k]) })
+  }
+
+  // reflex-nninteractive-viewer: release what init() acquired (React unmount).
+  destroy() {
+    this.loadToken++ // pending load()/setMesh() jobs drop their results
+    this.ready = false
+    this._resizeObserver?.disconnect()
+    window.removeEventListener('mousemove', this._winMove, { capture: true })
+    window.removeEventListener('mouseup', this._winUp, { capture: true })
+    if (this._wlFrame) cancelAnimationFrame(this._wlFrame)
+    clearTimeout(this._wheelTimer)
+    if (this.r3?._frame) cancelAnimationFrame(this.r3._frame)
+    this.nv2?.cleanup?.()
+    for (const c of [this.els.canvas2d, this.els.canvas3d]) c.getContext('webgl2')?.getExtension('WEBGL_lose_context')?.loseContext()
   }
 }
