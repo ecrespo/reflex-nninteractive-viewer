@@ -1,0 +1,75 @@
+[project]
+name = "reflex-nninteractive-viewer"
+dynamic = ["version"]
+description = "Reflex component wrapping the nnInteractive agent's WebGL2 medical image viewer (NiiVue slice views + 3D view)."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE", "src/reflex_nninteractive_viewer/assets/LICENSE*"]
+requires-python = ">=3.11"
+authors = [{ name = "Ernesto Crespo", email = "ecrespo@gmail.com" }]
+keywords = ["reflex", "reflex-component", "nninteractive", "niivue", "medical-imaging", "webgl2"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Framework :: FastAPI",
+]
+dependencies = ["reflex>=0.10.1", "fastapi>=0.115"]
+
+[project.urls]
+Repository = "https://github.com/ecrespo/reflex-nninteractive-viewer"
+Upstream = "https://github.com/MIC-DKFZ/nninteractive-agent"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28",
+    "numpy>=2",
+    "pre-commit>=4",
+    "pyright>=1.1.400",
+    "pytest>=8",
+    "pytest-playwright>=0.7",
+    "ruff>=0.12",
+]
+
+[build-system]
+requires = ["hatchling", "uv-dynamic-versioning", "hatch-reflex-pyi"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+# The version comes from the git tag (`v0.1.0` builds 0.1.0).
+source = "uv-dynamic-versioning"
+
+[tool.uv-dynamic-versioning]
+fallback-version = "0.1.0.dev0"
+
+[tool.hatch.build]
+# The .pyi stubs are generated at build time and are not committed.
+artifacts = ["/src/**/*.pyi"]
+
+[tool.hatch.build.targets.sdist]
+exclude = ["/nni_viewer_demo", "/.github", "/.idea"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/reflex_nninteractive_viewer"]
+
+[tool.hatch.build.hooks.reflex-pyi]
+dependencies = ["ruff", "reflex>=0.10.1"]
+
+[tool.ruff]
+target-version = "py311"
+extend-exclude = ["src/reflex_nninteractive_viewer/assets"]
+
+[tool.ruff.lint]
+select = ["B", "D", "E", "F", "I", "UP", "W"]
+ignore = ["D203", "D213"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"]
+"nni_viewer_demo/**" = ["D"]
+
+[tool.pyright]
+include = ["src", "tests"]
+pythonVersion = "3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["browser: needs a Playwright browser and a running demo app"]

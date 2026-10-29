@@ -218,3 +218,15 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# IDE
+.idea/
+
+# Generated at build time by hatch-reflex-pyi.
+src/**/*.pyi
+
+# Reflex demo app build output and frontend lockfile.
+nni_viewer_demo/.web/
+nni_viewer_demo/.states/
+nni_viewer_demo/assets/external/
+nni_viewer_demo/reflex.lock/
