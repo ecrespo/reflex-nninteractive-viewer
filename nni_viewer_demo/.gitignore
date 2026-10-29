@@ -5,3 +5,5 @@ assets/external/
 .web
 __pycache__/
 .data/
+reflex.log
+reflex-test.log

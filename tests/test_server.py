@@ -214,13 +214,11 @@ def test_authorize_guards_every_route(store, asynchronous):
 def test_slow_subscribers_are_dropped_not_buffered(monkeypatch):
     monkeypatch.setattr(server, "MAX_QUEUED_PATCHES", 3)
 
-    async def run():
-        queue = asyncio.Queue(maxsize=server.MAX_QUEUED_PATCHES + 1)
-        for i in range(10):
-            server._offer(queue, bytes([i]))
-        return [queue.get_nowait() for _ in range(queue.qsize())]
-
-    items = asyncio.run(run())
+    # No event loop needed for the nowait calls (and pytest-playwright may own this thread's).
+    queue = asyncio.Queue(maxsize=server.MAX_QUEUED_PATCHES + 1)
+    for i in range(10):
+        server._offer(queue, bytes([i]))
+    items = [queue.get_nowait() for _ in range(queue.qsize())]
     assert items[:3] == [b"\x00", b"\x01", b"\x02"]
     assert items[3] is server._OVERFLOW
     assert len(items) == 4
