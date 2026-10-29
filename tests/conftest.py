@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import os
+import shutil
 import signal
 import socket
 import subprocess
+import sys
 import time
 import urllib.request
 from pathlib import Path
@@ -39,7 +41,7 @@ def _serving(url: str) -> bool:
 
 
 @pytest.fixture(scope="session")
-def demo_url():
+def demo_url(tmp_path_factory):
     """The demo: ``NNI_DEMO_URL`` if set, else ``reflex run`` in production mode on a free port."""
     if url := os.environ.get("NNI_DEMO_URL"):
         if not _serving(url.rstrip("/")):
@@ -47,12 +49,18 @@ def demo_url():
         yield url.rstrip("/")
         return
     port = _free_port()
-    log = open(DEMO_DIR / "reflex-test.log", "w")  # noqa: SIM115
+    # A private copy: `reflex run` rewrites the app's .web/ and .data/, which would break a
+    # demo the developer is running from the same folder.
+    app_dir = tmp_path_factory.mktemp("demo") / "nni_viewer_demo"
+    shutil.copytree(
+        DEMO_DIR,
+        app_dir,
+        ignore=shutil.ignore_patterns(".web", ".states", ".data", "assets", "reflex.lock", "*.log"),
+    )
+    log = open(app_dir / "reflex-test.log", "w")  # noqa: SIM115
     proc = subprocess.Popen(
         [
-            "uv",
-            "run",
-            "reflex",
+            str(Path(sys.executable).with_name("reflex")),  # this environment's reflex
             "run",
             "--env",
             "prod",
@@ -60,7 +68,7 @@ def demo_url():
             "--frontend-port",
             str(port),
         ],
-        cwd=DEMO_DIR,
+        cwd=app_dir,
         stdout=log,
         stderr=subprocess.STDOUT,
         start_new_session=True,
