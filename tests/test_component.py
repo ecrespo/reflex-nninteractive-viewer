@@ -198,7 +198,7 @@ EVENTS = {
 def test_event_specs_pass_the_documented_arguments(name, arity):
     spec = NNInteractiveViewer.get_event_triggers()[name]
     args = [rx.Var(f"a{i}") for i in range(arity)]
-    assert len(spec(*args)) == arity
+    assert len(spec(*args)) == arity  # pyright: ignore[reportCallIssue]
 
 
 def test_handlers_receive_the_event_arguments():
@@ -267,4 +267,4 @@ def test_handler_with_too_many_arguments_is_rejected():
             pass
 
     with pytest.raises(Exception):  # noqa: B017 - Reflex raises its own EventHandlerArgTypeMismatch
-        nni_viewer(on_location=Bad.too_many)
+        nni_viewer(on_location=Bad.too_many)  # pyright: ignore[reportArgumentType]
