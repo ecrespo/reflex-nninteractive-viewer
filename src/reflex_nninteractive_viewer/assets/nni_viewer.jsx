@@ -99,6 +99,13 @@ export function splitPatchBundle(buf) {
   return out;
 }
 
+/** World (RAS) mm of workspace voxel ``p``: the image's NIfTI affine applied to (i, j, k) = reversed ``p``. */
+function voxelToMM(viewer, p) {
+  const A = viewer.vol.image.hdr.affine;
+  const ijk = [p[2], p[1], p[0]];
+  return [0, 1, 2].map((r) => A[r][0] * ijk[0] + A[r][1] * ijk[1] + A[r][2] * ijk[2] + A[r][3]);
+}
+
 const objectsSignature = (objects) => JSON.stringify((objects || []).map((o) => [o.id, o.color, o.name]));
 
 export function NniViewer({
@@ -181,6 +188,7 @@ export function NniViewer({
       },
     });
     viewerRef.current = viewer;
+    rootRef.current.nniViewer = viewer; // for browser tests, like upstream's window.nniViewer
     initRef.current = viewer.init();
     initRef.current.catch((e) => {
       console.error("The nnInteractive viewer could not start:", e);
@@ -196,7 +204,8 @@ export function NniViewer({
     }, () => {});
 
     // "Mention location": a click without a drag in the slice views. viewer.js moves the
-    // crosshair on mouse-up (directly or through NiiVue), so read it right after.
+    // crosshair on mouse-up (directly or through NiiVue), so read it right after. The voxel
+    // comes from viewer.js (converted with coords.js), mm from the image's NIfTI affine.
     const pane2d = canvas2dRef.current.parentElement;
     let down = null;
     const onDown = (e) => { down = e.button === 0 ? [e.clientX, e.clientY] : null; };
@@ -206,8 +215,7 @@ export function NniViewer({
       setTimeout(() => {
         const loc = lastLoc.current;
         if (!viewer.ready || !loc?.inside) return;
-        const mm = Array.from(viewer.nv2.frac2mm(viewer.nv2.scene.crosshairPos)).slice(0, 3);
-        props.current.onLocation?.(loc.point, mm, Number(loc.value));
+        props.current.onLocation?.(loc.point, voxelToMM(viewer, loc.point), Number(loc.value));
       }, 30);
     };
     pane2d.addEventListener("mousedown", onDown, { capture: true });

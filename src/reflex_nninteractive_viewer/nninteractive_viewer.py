@@ -15,6 +15,7 @@ import reflex as rx
 from reflex import constants
 from reflex.components.component import NoSSRComponent
 from reflex.environment import EnvironmentVariables
+from reflex.vars import Var
 
 # The wrapper and every module it imports must be linked into the app's assets, keeping
 # the relative layout the ES module imports rely on (./viewer.js, ./vendor/...).
@@ -58,35 +59,35 @@ def _link_assets() -> str:
 
 
 def _location_spec(
-    voxel: rx.Var[list[int]], mm: rx.Var[list[float]], value: rx.Var[float]
-) -> tuple[rx.Var[list[int]], rx.Var[list[float]], rx.Var[float]]:
+    voxel: Var[list[int]], mm: Var[list[float]], value: Var[float]
+) -> tuple[Var[list[int]], Var[list[float]], Var[float]]:
     """``on_location``: workspace voxel [axis0, axis1, axis2], RAS mm, image value."""
     return voxel, mm, value
 
 
-def _slice_spec(voxel: rx.Var[list[int]]) -> tuple[rx.Var[list[int]]]:
+def _slice_spec(voxel: Var[list[int]]) -> tuple[Var[list[int]]]:
     """``on_slice_change``: the workspace voxel at the crosshair."""
     return (voxel,)
 
 
-def _ready_spec(info: rx.Var[dict[str, Any]]) -> tuple[rx.Var[dict[str, Any]]]:
+def _ready_spec(info: Var[dict[str, Any]]) -> tuple[Var[dict[str, Any]]]:
     """``on_ready``: ``{"windows": [...], "presets": [...], "layout": str, "preset": str}``."""
     return (info,)
 
 
-def _message_spec(message: rx.Var[str]) -> tuple[rx.Var[str]]:
+def _message_spec(message: Var[str]) -> tuple[Var[str]]:
     """``on_error``: a human-readable message."""
     return (message,)
 
 
-def _layout_spec(mode: rx.Var[str]) -> tuple[rx.Var[str]]:
+def _layout_spec(mode: Var[str]) -> tuple[Var[str]]:
     """``on_layout_request``: the layout a tile label click or double-click asks for."""
     return (mode,)
 
 
 def _window_spec(
-    lo: rx.Var[float], hi: rx.Var[float], preset: rx.Var[int | None]
-) -> tuple[rx.Var[float], rx.Var[float], rx.Var[int | None]]:
+    lo: Var[float], hi: Var[float], preset: Var[int | None]
+) -> tuple[Var[float], Var[float], Var[int | None]]:
     """``on_window_change``: window bounds and the preset index (None after a drag)."""
     return lo, hi, preset
 
